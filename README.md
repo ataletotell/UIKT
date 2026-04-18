@@ -120,3 +120,8 @@ Components are widget blueprints made with elements.
 ![alt text](https://i.imgur.com/U7s8kmO.png)
 
 <!-- </details> -->
+
+## Documentation
+
+*   [Technical Overview](Docs/UIKT_Technical_Overview.md)
+*   [Walkthrough](Docs/UIKT_Walkthrough.md)

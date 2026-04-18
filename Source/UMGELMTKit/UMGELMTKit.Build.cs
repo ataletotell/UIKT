@@ -18,6 +18,7 @@ public class UMGELMTKit : ModuleRules
 		PrivateIncludePaths.AddRange(
 			new string[] {
 				// ... add other private include paths required here ...
+				"UMGELMTKit/Private/libwebp"
 			}
 			);
 			
@@ -39,7 +40,9 @@ public class UMGELMTKit : ModuleRules
 				"Slate",
 				"SlateCore",
 				"UMG",
-				"CommonUI"
+				"CommonUI",
+				"RHI",
+				"RenderCore"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

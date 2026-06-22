@@ -42,7 +42,10 @@ public class UMGELMTKit : ModuleRules
 				"UMG",
 				"CommonUI",
 				"RHI",
-				"RenderCore"
+				"RenderCore",
+				"Renderer",
+				"Projects",
+				"ApplicationCore"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

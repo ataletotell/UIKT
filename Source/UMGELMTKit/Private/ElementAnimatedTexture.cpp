@@ -6,6 +6,7 @@
 #include "ElementAnimatedTextureResource.h"
 #include "ElementGIFDecoder.h"
 #include "ElementWebPDecoder.h"
+#include "Async/Async.h"
 
 float UElementAnimatedTexture::GetSurfaceWidth() const
 {
@@ -55,17 +56,67 @@ FTextureResource* UElementAnimatedTexture::CreateResource()
 
 void UElementAnimatedTexture::Tick(float DeltaTime)
 {
-	if (!bPlaying)
-		return;
-	if (!Decoder)
+	if (!bPlaying || !Decoder)
 		return;
 
 	FrameTime += DeltaTime * PlayRate;
-	if (FrameTime < FrameDelay)
+	if (FrameTime < FrameDelay || bDecodeTaskPending)
 		return;
 
+	bDecodeTaskPending = true;
 	FrameTime = 0;
-	FrameDelay = RenderFrameToTexture();
+
+	TSharedPtr<FElementAnimatedTextureDecoder, ESPMode::ThreadSafe> LocalDecoder = Decoder;
+	TSharedPtr<FCriticalSection> LocalLock = DecoderLock;
+	FTextureResource* RHIResource = GetResource();
+	const uint32 DefaultDelayMs = static_cast<uint32>(DefaultFrameDelay * 1000.f);
+	const bool bLoop = bLooping;
+	const uint32 Generation = DecodeGeneration;
+	TWeakObjectPtr<UElementAnimatedTexture> WeakThis(this);
+
+	Async(EAsyncExecution::ThreadPool,
+		[WeakThis, LocalDecoder, LocalLock, RHIResource, DefaultDelayMs, bLoop, Generation]()
+		{
+			int32 DelayMs;
+			const uint8* FrameBuffer;
+			{
+				FScopeLock Lock(LocalLock.Get());
+				DelayMs = static_cast<int32>(LocalDecoder->NextFrame(DefaultDelayMs, bLoop));
+				FrameBuffer = reinterpret_cast<const uint8*>(LocalDecoder->GetFrameBuffer());
+			}
+
+			ENQUEUE_RENDER_COMMAND(AnimTexture2D_RenderFrame)(
+				[WeakThis, RHIResource, FrameBuffer, DelayMs, Generation](FRHICommandListImmediate& RHICmdList)
+				{
+					if (RHIResource && RHIResource->TextureRHI)
+					{
+						FTextureRHIRef Texture2DRHI = RHIResource->TextureRHI->GetTexture2D();
+						if (Texture2DRHI)
+						{
+							uint32 TexWidth = Texture2DRHI->GetSizeX();
+							uint32 TexHeight = Texture2DRHI->GetSizeY();
+							FUpdateTextureRegion2D Region;
+							Region.SrcX = Region.SrcY = Region.DestX = Region.DestY = 0;
+							Region.Width = TexWidth;
+							Region.Height = TexHeight;
+							RHIUpdateTexture2D(Texture2DRHI, 0, Region, TexWidth * sizeof(FColor), FrameBuffer);
+						}
+					}
+
+					Async(EAsyncExecution::TaskGraphMainThread,
+						[WeakThis, DelayMs, Generation]()
+						{
+							if (UElementAnimatedTexture* Self = WeakThis.Get())
+							{
+								if (Self->DecodeGeneration == Generation)
+								{
+									Self->FrameDelay = static_cast<float>(DelayMs) / 1000.f;
+									Self->bDecodeTaskPending = false;
+								}
+							}
+						});
+				});
+		});
 }
 
 
@@ -108,46 +159,37 @@ void UElementAnimatedTexture::ImportFile(EElementAnimatedTextureType InFileType,
 	FileBlob = TArray<uint8>(InBuffer, InBufferSize);
 }
 
-float UElementAnimatedTexture::RenderFrameToTexture()
+void UElementAnimatedTexture::UploadFrameToRHI(const uint8* FrameBuffer)
 {
-	// decode a new frame to memory buffer
-	int nFrameDelay = Decoder->NextFrame(DefaultFrameDelay * 1000, bLooping);
-
-	// copy frame to RHI texture
-	struct FRenderCommandData
-	{
-		FTextureResource* RHIResource;
-		const uint8* FrameBuffer;
-	};
-
-	typedef TSharedPtr<FRenderCommandData, ESPMode::ThreadSafe> FCommandDataPtr;
-	FCommandDataPtr CommandData = MakeShared<FRenderCommandData, ESPMode::ThreadSafe>();
-	CommandData->RHIResource = GetResource();
-	CommandData->FrameBuffer = (const uint8*)(Decoder->GetFrameBuffer());
-
-	//-- equeue render command
+	FTextureResource* RHIResource = GetResource();
 	ENQUEUE_RENDER_COMMAND(AnimTexture2D_RenderFrame)(
-		[CommandData](FRHICommandListImmediate& RHICmdList)
+		[RHIResource, FrameBuffer](FRHICommandListImmediate& RHICmdList)
 		{
-			if (!CommandData->RHIResource || !CommandData->RHIResource->TextureRHI)
+			if (!RHIResource || !RHIResource->TextureRHI)
 				return;
-
-			FTextureRHIRef Texture2DRHI = CommandData->RHIResource->TextureRHI->GetTexture2D();
+			FTextureRHIRef Texture2DRHI = RHIResource->TextureRHI->GetTexture2D();
 			if (!Texture2DRHI)
 				return;
-
 			uint32 TexWidth = Texture2DRHI->GetSizeX();
 			uint32 TexHeight = Texture2DRHI->GetSizeY();
-			uint32 SrcPitch = TexWidth * sizeof(FColor);
-
 			FUpdateTextureRegion2D Region;
 			Region.SrcX = Region.SrcY = Region.DestX = Region.DestY = 0;
 			Region.Width = TexWidth;
 			Region.Height = TexHeight;
-
-			RHIUpdateTexture2D(Texture2DRHI, 0, Region, SrcPitch, CommandData->FrameBuffer);
+			RHIUpdateTexture2D(Texture2DRHI, 0, Region, TexWidth * sizeof(FColor), FrameBuffer);
 		});
+}
 
+float UElementAnimatedTexture::RenderFrameToTexture()
+{
+	int32 nFrameDelay;
+	const uint8* FrameBuffer;
+	{
+		FScopeLock Lock(DecoderLock.Get());
+		nFrameDelay = static_cast<int32>(Decoder->NextFrame(static_cast<uint32>(DefaultFrameDelay * 1000), bLooping));
+		FrameBuffer = reinterpret_cast<const uint8*>(Decoder->GetFrameBuffer());
+	}
+	UploadFrameToRHI(FrameBuffer);
 	return nFrameDelay / 1000.0f;
 }
 
@@ -163,10 +205,24 @@ void UElementAnimatedTexture::Play()
 
 void UElementAnimatedTexture::PlayFromStart()
 {
+	++DecodeGeneration;
+	bDecodeTaskPending = false;
 	FrameTime = 0;
 	FrameDelay = 0;
 	bPlaying = true;
-	if (Decoder) Decoder->Reset();
+	if (Decoder)
+	{
+		int32 nFrameDelay;
+		const uint8* FrameBuffer;
+		{
+			FScopeLock Lock(DecoderLock.Get());
+			Decoder->Reset();
+			nFrameDelay = static_cast<int32>(Decoder->NextFrame(static_cast<uint32>(DefaultFrameDelay * 1000), bLooping));
+			FrameBuffer = reinterpret_cast<const uint8*>(Decoder->GetFrameBuffer());
+		}
+		FrameDelay = nFrameDelay / 1000.f;
+		UploadFrameToRHI(FrameBuffer);
+	}
 }
 
 void UElementAnimatedTexture::Stop()
@@ -182,10 +238,21 @@ void UElementAnimatedTexture::PlayFromFrame(int32 FrameIndex)
 
 void UElementAnimatedTexture::SetCurrentFrame(int32 FrameIndex)
 {
-	if (Decoder)
+	if (!Decoder)
+		return;
+
+	++DecodeGeneration;
+	bDecodeTaskPending = false;
+
+	int32 nFrameDelay;
+	const uint8* FrameBuffer;
 	{
+		FScopeLock Lock(DecoderLock.Get());
 		Decoder->SeekToFrame(FrameIndex);
-		FrameDelay = RenderFrameToTexture();
-		FrameTime = 0;
+		nFrameDelay = static_cast<int32>(Decoder->NextFrame(static_cast<uint32>(DefaultFrameDelay * 1000), bLooping));
+		FrameBuffer = reinterpret_cast<const uint8*>(Decoder->GetFrameBuffer());
 	}
+	FrameDelay = nFrameDelay / 1000.f;
+	FrameTime = 0;
+	UploadFrameToRHI(FrameBuffer);
 }

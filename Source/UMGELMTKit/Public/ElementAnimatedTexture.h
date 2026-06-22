@@ -94,7 +94,7 @@ public:	// FTickableGameObject Interface
 	virtual void Tick(float DeltaTime) override;
 	virtual bool IsTickable() const override
 	{
-		return true;
+		return bPlaying && Decoder.IsValid();
 	}
 	virtual TStatId GetStatId() const
 	{
@@ -102,7 +102,7 @@ public:	// FTickableGameObject Interface
 	}
 	virtual bool IsTickableInEditor() const
 	{
-		return true;
+		return false;
 	}
 
 	virtual UWorld* GetTickableGameObjectWorld() const
@@ -120,6 +120,9 @@ public: // Internal APIs
 	float RenderFrameToTexture();
 
 private:
+	void UploadFrameToRHI(const uint8* FrameBuffer);
+
+private:
 	UPROPERTY()
 		EElementAnimatedTextureType FileType = EElementAnimatedTextureType::None;
 
@@ -128,9 +131,12 @@ private:
 
 private:
 	TSharedPtr<FElementAnimatedTextureDecoder, ESPMode::ThreadSafe> Decoder;
+	TSharedPtr<FCriticalSection> DecoderLock = MakeShared<FCriticalSection>();
 
 	float AnimationLength = 0.0f;
 	float FrameDelay = 0.0f;
 	float FrameTime = 0.0f;
 	bool bPlaying = true;
+	bool bDecodeTaskPending = false;
+	uint32 DecodeGeneration = 0;
 };

@@ -1,0 +1,13 @@
+!Bin/
+!bin/
+!Lib/
+!lib/
+!*.dll
+!*.so
+!*.dylib
+!*.lib
+!*.a
+!*.pdb
+
+!Build/
+!build/

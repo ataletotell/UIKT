@@ -67,12 +67,16 @@ public:
 	bool bAnimateWholeButton = false;
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnELMTButtonSimulatedHoverEvent);
+
 UCLASS()
 class UMGELMTKIT_API UELMTIconButton : public UButton {
 	GENERATED_BODY()
 
 public:
 	UELMTIconButton(const FObjectInitializer& ObjectInitializer);
+
+	// --- Properties ---
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Icon, meta = (ExposeOnSpawn = true))
 	UTexture2D* Icon;
@@ -110,7 +114,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Feedback", meta = (EditCondition = "bOverrideFeedbackSettings"))
 	bool bAnimateWholeButton = false;
 
+	// --- Simulated Hover Events ---
+
+	UPROPERTY(BlueprintAssignable, Category = "Button|Events")
+	FOnELMTButtonSimulatedHoverEvent OnSimulatedHoverBegin;
+
+	UPROPERTY(BlueprintAssignable, Category = "Button|Events")
+	FOnELMTButtonSimulatedHoverEvent OnSimulatedHoverEnd;
+
+	// --- Overrides ---
+
 	virtual void SynchronizeProperties() override;
+
+	// --- Icon ---
 
 	UFUNCTION(BlueprintCallable, Category = Icon)
 	void SetIcon(UTexture2D* NewIcon);
@@ -130,7 +146,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = Icon)
 	void SetIconHeight(float Height);
 
+	// --- Simulated Hover ---
+
+	/** Force the button into or out of hovered visual state regardless of cursor position. */
+	UFUNCTION(BlueprintCallable, Category = "Button")
+	void SimulateHover(bool bHover);
+
+	/** Toggle simulated hover on/off. */
+	UFUNCTION(BlueprintCallable, Category = "Button")
+	void ToggleSimulatedHover();
+
+	/** True while simulated hover is active. */
+	UFUNCTION(BlueprintPure, Category = "Button")
+	bool IsHoverSimulated() const { return bIsHoverSimulated; }
+
+	/** Remove simulated hover (same as SimulateHover(false)). */
+	UFUNCTION(BlueprintCallable, Category = "Button")
+	void ClearSimulatedHover();
+
 private:
+	bool bIsHoverSimulated = false;
+	FButtonStyle CachedStyleBeforeSimulation;
+
+
 	UPROPERTY()
 	UImage* IconImage;
 

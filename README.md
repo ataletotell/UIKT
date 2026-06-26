@@ -69,26 +69,87 @@ UMGELMTKit/Content/Interface/Style/Text/ElementUI_Style_Text_Small
 
 
 
-## Elements
+## ELMT Widget Suite
 
-Prefix: `ElementUI_`
+Source class prefix: `UULMT` / Blueprint palette category: **ELMT**
 
-Elements that support the CommonUI Style pattern:
+### Interactive
 
-- Texts (11 Styles) _\*Use Common UI Text_
-- Buttons (7 Styles)
-- Borders (2 Styles)
-- TextBox
-- CheckBox
-- Combo
-- ProgressBar
-- Slider
+| Class | Based on | Adds |
+|---|---|---|
+| `ELMTButton` | `UButton` | CommonUI style, `SimulateHover(bool)` |
+| `ELMTIconButton` | `UButton` | Icon image, 4 press animations (Bounce/Flash/Offset/RotateShake), `SimulateHover` |
+| `ELMTSlider` | `USlider` | Style data asset |
+| `ELMTToggle` | `UCheckBox` | Style data asset |
+| `ELMTCombo` | `UComboBoxString` | CommonUI style, `SimulateHover` |
+| `ELMTTextBox` | `UEditableTextBox` | CommonUI style on background images |
+
+### Display
+
+| Class | Based on | Adds |
+|---|---|---|
+| `ELMTProgressBar` | `UProgressBar` | Style data asset |
+| `ELMTBadge` | `UBorder` | Variant color system (Primary/Success/Warning/Danger/Neutral) |
+| `ELMTSpinner` | `UImage` | Timer-driven rotation, `Play/Stop`, `bAutoPlay` |
+| `ELMTRichText` | `URichTextBlock` | CommonUI text style integration, per-instance color override |
+
+### Navigation & Layout
+
+| Class | Based on | Adds |
+|---|---|---|
+| `ELMTFocusPanel` | `UContentWidget` | Traps gamepad/keyboard focus in all 4 directions |
+| `ELMTScrollBox` | `UScrollBox` | Style data asset |
+| `ELMTTabBar` | `UHorizontalBox` | `SelectTab/Next/Previous`, `OnTabChanged` delegate, wrap toggle |
+
+### Composites (Blueprint abstract bases)
+
+| Class | Description |
+|---|---|
+| `ELMTModal` | Modal dialog base. `Confirm/Cancel` with delegates + auto-remove. Override `OnModalConfirmed/Cancelled` for animations. |
+| `ELMTToast` | Toast notification with internal queue. `ShowMessage/ShowToast/ClearQueue`. Override `OnShowToast/OnHideToast`. |
+
+---
+
+## Advanced Media
+
+**Animated Texture (GIF/WebP)**
+
+Import `.gif` or `.webp` — plugin creates a `UElementAnimatedTexture` asset using giflib/libwebp decoders. Each frame uploads to RHI via `FTickableGameObject::Tick`.
+
+- `ElementAnimatedImage` widget — wraps `UImage`, creates independent playhead per instance
+- Full playback API: `Play/Stop/Pause/PlayFromFrame/SetPlayRate/SetLooping/GetAnimationLength`
+
+---
+
+## Blur Effects
+
+Three widgets at increasing cost/control levels:
+
+| Widget | Based on | Blurs | Mask |
+|---|---|---|---|
+| `ElementMaskedBlur` | `URetainerBox` | Children inside widget | Texture (UIBlur.ush shader) |
+| `ElementMaskedBackgroundBlur` | `UContentWidget` | Gameplay behind widget | Texture + material |
+| `BackgroundBlurWithMask` | `UContentWidget` + `FTickableGameObject` | Gameplay behind widget | Texture or animated material, per-channel selection |
+
+`BackgroundBlurWithMask` adds `SetBlurStrengthSmooth(target, rate)` for tick-driven blur transitions without animations.
+
+---
+
+## Navigation Library
+
+`UELMTNavigationLibrary` — Blueprint function library for setting navigation stop/wrap/escape rules on any widget:
+
+- `ContainFocusToWidget(Panel)` — stop all 4 directions (modal trap)
+- `WrapNavigationOnWidget(Panel)` — wrap all 4 (list wrap)
+- `SetNavigationStop/Wrap/Escape(Widget, Direction)` — per-direction control
+
+---
 
 ## Components
 
 Prefix: `ElementUI_C_`
 
-Components are widget blueprints made with elements.
+Blueprint widget components built from ELMT elements:
 
 <details>
   <summary>Alert Dialog</summary>
@@ -114,14 +175,10 @@ Components are widget blueprints made with elements.
 
 - 3 Demo Widgets including this Email Dashboard inspired by [shadcn](https://ui.shadcn.com/examples/mail):
 
-<!-- <details> -->
-  <!-- <summary>Preview</summary> -->
-
 ![alt text](https://i.imgur.com/U7s8kmO.png)
-
-<!-- </details> -->
 
 ## Documentation
 
 *   [Technical Overview](Docs/UIKT_Technical_Overview.md)
 *   [Walkthrough](Docs/UIKT_Walkthrough.md)
+*   [Changelog](CHANGELOG.md)

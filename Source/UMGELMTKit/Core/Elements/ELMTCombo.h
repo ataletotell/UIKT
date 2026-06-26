@@ -5,6 +5,9 @@
 #include "CoreMinimal.h"
 #include "Components/ComboBoxString.h"
 #include "CommonButtonBase.h"
+#include "Input/Reply.h"
+#include "Layout/Geometry.h"
+#include "Input/Events.h"
 #include "ELMTCombo.generated.h"
 
 
@@ -29,6 +32,8 @@ public:
 	FScrollBarStyle ScrollBarStyle;
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnELMTComboSimulatedHoverEvent);
+
 UCLASS()
 class UMGELMTKIT_API UELMTCombo : public UComboBoxString {
 	GENERATED_BODY()
@@ -37,5 +42,37 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = ELMT_Style, meta = (ExposeOnSpawn = true))
 	TSubclassOf<UELMTComboStyle> ComboBoxStyle;
 
+	// --- Simulated Hover Events ---
+
+	UPROPERTY(BlueprintAssignable, Category = "ComboBox|Events")
+	FOnELMTComboSimulatedHoverEvent OnSimulatedHoverBegin;
+
+	UPROPERTY(BlueprintAssignable, Category = "ComboBox|Events")
+	FOnELMTComboSimulatedHoverEvent OnSimulatedHoverEnd;
+
+	// --- Overrides ---
+
 	virtual void SynchronizeProperties() override;
+
+	// --- Simulated Hover ---
+
+	/** Force the combo button into or out of hovered visual state regardless of cursor position. */
+	UFUNCTION(BlueprintCallable, Category = "ComboBox")
+	void SimulateHover(bool bHover);
+
+	/** Toggle simulated hover on/off. */
+	UFUNCTION(BlueprintCallable, Category = "ComboBox")
+	void ToggleSimulatedHover();
+
+	/** True while simulated hover is active. */
+	UFUNCTION(BlueprintPure, Category = "ComboBox")
+	bool IsHoverSimulated() const { return bIsHoverSimulated; }
+
+	/** Remove simulated hover (same as SimulateHover(false)). */
+	UFUNCTION(BlueprintCallable, Category = "ComboBox")
+	void ClearSimulatedHover();
+
+private:
+	bool bIsHoverSimulated = false;
+	FComboBoxStyle CachedComboStyle;
 };

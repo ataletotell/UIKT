@@ -27,11 +27,13 @@ public class UMGELMTKit : ModuleRules
 			new string[]
 			{
 				"Core",
+				"UMG",
+				"CommonUI",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
-			
-		
+
+
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
@@ -39,8 +41,6 @@ public class UMGELMTKit : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
-				"UMG",
-				"CommonUI",
 				"RHI",
 				"RenderCore",
 				"Renderer",

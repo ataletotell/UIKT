@@ -13,9 +13,13 @@ class UMGELMTKIT_API UELMTSliderStyle : public UObject {
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	FSliderStyle Style;
+
+	/** Handle tint applied when slider has gamepad/keyboard focus. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Focus)
+	FLinearColor FocusTintColor = FLinearColor(1.f, 0.85f, 0.f, 1.f);
 };
 
-UCLASS()
+UCLASS(meta=(DisplayName="ELMT Slider", Category="ELMT|Interactive"))
 class UMGELMTKIT_API UELMTSlider : public USlider {
 	GENERATED_BODY()
 
@@ -24,4 +28,5 @@ public:
 	TSubclassOf<UELMTSliderStyle> SliderStyle;
 
 	virtual void SynchronizeProperties() override;
+
 };

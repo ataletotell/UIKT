@@ -5,6 +5,13 @@
 #include "CommonTextBlock.h"
 
 void UELMTCombo::SynchronizeProperties() {
+	// Strip RF_Transactional in game worlds to prevent undo TransBuffer from
+	// retaining PIE widget references and causing assert on PIE end.
+	if (UWorld* World = GetWorld(); World && World->IsGameWorld())
+	{
+		ClearFlags(RF_Transactional);
+	}
+
 	Super::SynchronizeProperties();
 
 	if (!ComboBoxStyle)
@@ -21,13 +28,47 @@ void UELMTCombo::SynchronizeProperties() {
 		EditedStyle.ComboButtonStyle.ButtonStyle.SetHovered(ButtonInstance->NormalHovered);
 		EditedStyle.ComboButtonStyle.ButtonStyle.SetDisabled(ButtonInstance->Disabled);
 
-		if (ButtonInstance->GetNormalTextStyle()) {
-			Font = ButtonInstance->GetNormalTextStyle()->Font;
-			ForegroundColor = ButtonInstance->GetNormalTextStyle()->Color;
-		}
+
 	}
 
 	SetWidgetStyle(EditedStyle);
 	SetItemStyle(StyleInstance->ItemStyle);
-	ScrollBarStyle = StyleInstance->ScrollBarStyle;
+
+	CachedComboStyle = EditedStyle;
 }
+
+void UELMTCombo::SimulateHover(bool bHover)
+{
+	if (bHover == bIsHoverSimulated)
+	{
+		return;
+	}
+
+	bIsHoverSimulated = bHover;
+
+	if (bHover)
+	{
+		FComboBoxStyle ForcedStyle = CachedComboStyle;
+		ForcedStyle.ComboButtonStyle.ButtonStyle.Normal = ForcedStyle.ComboButtonStyle.ButtonStyle.Hovered;
+		SetWidgetStyle(ForcedStyle);
+		OnSimulatedHoverBegin.Broadcast();
+	}
+	else
+	{
+		SetWidgetStyle(CachedComboStyle);
+		OnSimulatedHoverEnd.Broadcast();
+	}
+}
+
+void UELMTCombo::ToggleSimulatedHover()
+{
+	SimulateHover(!bIsHoverSimulated);
+}
+
+void UELMTCombo::ClearSimulatedHover()
+{
+	SimulateHover(false);
+}
+
+
+

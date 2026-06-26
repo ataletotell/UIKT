@@ -3,6 +3,9 @@
 #include "ELMTIconButton.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
+#include "Input/Reply.h"
+#include "Layout/Geometry.h"
+#include "Input/Events.h"
 
 UELMTIconButton::UELMTIconButton(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -13,6 +16,14 @@ UELMTIconButton::UELMTIconButton(const FObjectInitializer& ObjectInitializer)
 
 void UELMTIconButton::SynchronizeProperties()
 {
+	// UButton is RF_Transactional. In game worlds (including PIE) that causes
+	// Modify() calls inside SetStyle/AddChild to write PIE widget refs into the
+	// undo TransBuffer, blocking GC after PIE ends (PlayLevel.cpp:544 assert).
+	if (UWorld* World = GetWorld(); World && World->IsGameWorld())
+	{
+		ClearFlags(RF_Transactional);
+	}
+
 	Super::SynchronizeProperties();
 
 	if (!IconImage)
@@ -95,6 +106,40 @@ void UELMTIconButton::SetIconHeight(float Height)
 		FVector2D CurrentSize = IconImage->GetDesiredSize();
 		IconImage->SetDesiredSizeOverride(FVector2D(CurrentSize.X, Height));
 	}
+}
+
+void UELMTIconButton::SimulateHover(bool bHover)
+{
+	if (bHover == bIsHoverSimulated)
+	{
+		return;
+	}
+
+	bIsHoverSimulated = bHover;
+
+	if (bHover)
+	{
+		CachedStyleBeforeSimulation = GetStyle();
+		FButtonStyle ForcedStyle = CachedStyleBeforeSimulation;
+		ForcedStyle.Normal = ForcedStyle.Hovered;
+		SetStyle(ForcedStyle);
+		OnSimulatedHoverBegin.Broadcast();
+	}
+	else
+	{
+		SetStyle(CachedStyleBeforeSimulation);
+		OnSimulatedHoverEnd.Broadcast();
+	}
+}
+
+void UELMTIconButton::ToggleSimulatedHover()
+{
+	SimulateHover(!bIsHoverSimulated);
+}
+
+void UELMTIconButton::ClearSimulatedHover()
+{
+	SimulateHover(false);
 }
 
 void UELMTIconButton::UpdateIcon()

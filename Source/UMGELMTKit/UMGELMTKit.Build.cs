@@ -10,7 +10,9 @@ public class UMGELMTKit : ModuleRules
 		
 		PublicIncludePaths.AddRange(
 			new string[] {
-				// ... add public include paths required here ...
+				System.IO.Path.Combine(ModuleDirectory, "Core"),
+				System.IO.Path.Combine(ModuleDirectory, "Core", "Elements"),
+				System.IO.Path.Combine(ModuleDirectory, "Core", "DesignSystem"),
 			}
 			);
 				

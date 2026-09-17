@@ -115,7 +115,7 @@ EReimportResult::Type UElementAnimatedTextureFactory::Reimport(UObject* Obj)
 	// Ensure that the file provided by the path exists
 	if (IFileManager::Get().FileSize(*ResolvedSourceFilePath) == INDEX_NONE)
 	{
-		UE_LOG(LogElementAnimTextureEditor, Warning, TEXT("cannot reimport: [] file cannot be found."), *ResolvedSourceFilePath);
+		UE_LOG(LogElementAnimTextureEditor, Warning, TEXT("cannot reimport: [%s] file cannot be found."), *ResolvedSourceFilePath);
 		return EReimportResult::Failed;
 	}
 

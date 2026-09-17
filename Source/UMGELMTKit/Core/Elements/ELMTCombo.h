@@ -39,6 +39,10 @@ class UMGELMTKIT_API UELMTCombo : public UComboBoxString {
 	GENERATED_BODY()
 
 public:
+	/** Stable identifier for automated QA/test tooling to find this widget in the live tree. Not shown to players. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Testing, meta = (ExposeOnSpawn = true))
+	FName TestId;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = ELMT_Style, meta = (ExposeOnSpawn = true))
 	TSubclassOf<UELMTComboStyle> ComboBoxStyle;
 

@@ -78,6 +78,10 @@ public:
 
 	// --- Properties ---
 
+	/** Stable identifier for automated QA/test tooling to find this widget in the live tree. Not shown to players. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Testing, meta = (ExposeOnSpawn = true))
+	FName TestId;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Icon, meta = (ExposeOnSpawn = true))
 	UTexture2D* Icon;
 
